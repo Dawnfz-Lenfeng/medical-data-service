@@ -1,0 +1,5 @@
+nacos-sdk-python
+fastapi
+uvicorn
+sqlalchemy
+pymysql
