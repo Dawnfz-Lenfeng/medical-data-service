@@ -151,20 +151,6 @@ class MedicalService:
         return [dict(row) for row in cursor.fetchall()]
     
 #sql1
-class MedicalCostService:
-    def __init__(self):
-        from config import DB_PATH
-
-        self.db_path = DB_PATH
-        self.local = threading.local()
-
-    def get_connection(self):
-        """Get thread-local database connection"""
-        if not hasattr(self.local, "conn"):
-            self.local.conn = sqlite3.connect(self.db_path)
-            self.local.conn.row_factory = sqlite3.Row
-        return self.local.conn
-
     def get_some_medical_costs(self, item_code):
         """查询某种诊疗方案对应的公示价格"""
         conn = self.get_connection()
@@ -182,20 +168,6 @@ class MedicalCostService:
         return [dict(row) for row in cursor.fetchall()]
 
 #sql2
-class DrugPriceService:
-    def __init__(self):
-        from config import DB_PATH
-
-        self.db_path = DB_PATH
-        self.local = threading.local()
-
-    def get_connection(self):
-        """Get thread-local database connection"""
-        if not hasattr(self.local, "conn"):
-            self.local.conn = sqlite3.connect(self.db_path)
-            self.local.conn.row_factory = sqlite3.Row
-        return self.local.conn
-
     def get_some_drug_prices(self, drug_code):
         """查询某种药品公示价格"""
         conn = self.get_connection()
@@ -217,20 +189,6 @@ class DrugPriceService:
         return [dict(row) for row in cursor.fetchall()]
 
 #sql3
-class DiseaseInfoService:
-    def __init__(self):
-        from config import DB_PATH
-
-        self.db_path = DB_PATH
-        self.local = threading.local()
-
-    def get_connection(self):
-        """Get thread-local database connection"""
-        if not hasattr(self.local, "conn"):
-            self.local.conn = sqlite3.connect(self.db_path)
-            self.local.conn.row_factory = sqlite3.Row
-        return self.local.conn
-
     def get_some_disease_info(self, disease_name):
         """查询某种疾病基础信息"""
         conn = self.get_connection()
@@ -255,24 +213,18 @@ class DiseaseInfoService:
         return [dict(row) for row in cursor.fetchall()]
 
 #BPMN
-class DiseaseMedicalDrugService:
-    def __init__(self):
-        self.medical_cost_service = MedicalCostService()
-        self.drug_price_service = DrugPriceService()
-        self.disease_info_service = DiseaseInfoService()
-
     def get_disease_medical_drug_info(self, disease_name):
         """组合查询：查询疾病信息、药品价格和医疗费用信息"""
         #输入
-        disease_info = self.disease_info_service.get_some_disease_info([disease_name])
+        disease_info = self.get_some_disease_info([disease_name])
         if not disease_info:
             return {"error": "Disease not found"}
         disease = disease_info[0]
         #分割
         treatment_codes = disease['treatment_code'].split(';')
         drug_codes = disease['recommended_drugs_code'].split(';')
-        medical_costs = self.medical_cost_service.get_some_medical_costs(treatment_codes)
-        drug_prices = self.drug_price_service.get_some_drug_prices(drug_codes)
+        medical_costs = self.get_some_medical_costs(treatment_codes)
+        drug_prices = self.get_some_drug_prices(drug_codes)
         #输出
         result = {
             "description": disease['description'],
@@ -280,15 +232,13 @@ class DiseaseMedicalDrugService:
             "level": disease['level'],
             "recommended_drugs": disease['recommended_drugs'],
             "treatment": disease['treatment'],
-            
         }
-
         for idx, drug in enumerate(drug_prices):
             result[f"drug_name{idx + 1}"] = drug['drug_name']
             result[f"drug_price{idx + 1}"] = drug['price']
             result[f"drug_specification{idx + 1}"] = drug['specification']
             result[f"drug_manufacturer{idx + 1}"] = drug['manufacturer']
-
+            
         for idx, medical in enumerate(medical_costs):
             result[f"treatment_name{idx + 1}"] = medical['item_name']
             result[f"treatment_price{idx + 1}"] = medical['price']

@@ -8,17 +8,9 @@ from flask import Flask, jsonify, request
 
 from config import IP, NACOS_SERVER, PORT, SERVICE_NAME
 from service import MedicalService
-from service import MedicalCostService
-from service import DrugPriceService
-from service import DiseaseInfoService
-from service import DiseaseMedicalDrugService
 
 app = Flask(__name__)
 service = MedicalService()
-medical_cost_service = MedicalCostService()
-drug_price_service = DrugPriceService()
-disease_info_service = DiseaseInfoService()
-disease_medical_drug_service = DiseaseMedicalDrugService()
 
 # 初始化数据库
 service.init_db()
@@ -88,7 +80,7 @@ def get_some_medicals():
     if not item_codes:
         return jsonify({"error": "No valid item_code provided"}), 400
 
-    return jsonify(medical_cost_service.get_some_medical_costs(item_codes))
+    return jsonify(service.get_some_medical_costs(item_codes))
 
 @app.route("/api/some_drugs", methods=["GET"])
 def get_some_drugs():
@@ -101,7 +93,7 @@ def get_some_drugs():
     if not drug_codes:
         return jsonify({"error": "No valid drug_code provided"}), 400
 
-    return jsonify(drug_price_service.get_some_drug_prices(drug_codes))
+    return jsonify(service.get_some_drug_prices(drug_codes))
 
 
 @app.route("/api/some_diseases", methods=["GET"])
@@ -115,7 +107,7 @@ def get_some_diseases():
     if not disease_names:
         return jsonify({"error": "No valid disease_name provided"}), 400
 
-    return jsonify(disease_info_service.get_some_disease_info(disease_names))
+    return jsonify(service.get_some_disease_info(disease_names))
 
 @app.route("/api/one_disease_medical_drug", methods=["GET"])
 def get_disease_medical_drug_info_route():
@@ -124,7 +116,7 @@ def get_disease_medical_drug_info_route():
     if not disease_name:
         return jsonify({"error": "Missing required parameter: disease_name"}), 400
 
-    result = disease_medical_drug_service.get_disease_medical_drug_info(disease_name)
+    result = service.get_disease_medical_drug_info(disease_name)
     if 'error' in result:
         return jsonify(result), 404
     return jsonify(result)
@@ -141,4 +133,4 @@ if __name__ == "__main__":
     #webbrowser.open("http://127.0.0.1:5000/api/one_disease_medical_drug?disease_name=肺炎")
 
     # 启动Flask服务
-    app.run(host=IP, port=PORT, debug=True)
+    app.run(host=IP, port=PORT)
