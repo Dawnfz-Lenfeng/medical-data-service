@@ -142,12 +142,112 @@ class MedicalService:
                 疾病描述 as description,
                 疾病分级 as level,
                 常用诊疗 as treatment,
-                常用药品 as recommended_drugs
+                常用药品 as recommended_drugs,
+                常用诊疗编号 as treatment_codes,
+                常用药品编号 as recommended_drugs_codes
             FROM disease_info
             """
         )
         return [dict(row) for row in cursor.fetchall()]
+    
+#sql1
+    def get_some_medical_costs(self, item_code):
+        """查询某种诊疗方案对应的公示价格"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        query = """
+            SELECT 
+                项目编码 as item_code,
+                项目名称 as item_name,
+                计价单位 as unit,
+                项目单价（元） as price
+            FROM publicize_cost
+            WHERE 项目编码 IN ({})
+        """.format(','.join('?' for _ in item_code))
+        cursor.execute(query, tuple(item_code))
+        return [dict(row) for row in cursor.fetchall()]
+
+#sql2
+    def get_some_drug_prices(self, drug_code):
+        """查询某种药品公示价格"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT 
+                编号 as drug_code,
+                药品名称 as drug_name,
+                规格 as specification,
+                产地 as manufacturer,
+                价格 as price
+            FROM publicize_drug_price
+            WHERE 编号 IN ({})
+
+            """.format(','.join(['?'] * len(drug_code))),
+            tuple(drug_code)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+#sql3
+    def get_some_disease_info(self, disease_name):
+        """查询某种疾病基础信息"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT 
+                疾病名称 as disease_name,
+                疾病编码 as disease_code,
+                疾病描述 as description,
+                疾病分级 as level,
+                常用诊疗 as treatment,
+                常用药品 as recommended_drugs,
+                常用诊疗编号 as treatment_code,
+                常用药品编号 as recommended_drugs_code
+            FROM disease_info
+            WHERE 疾病名称 IN ({})
+
+            """.format(','.join(['?'] * len(disease_name))),
+            tuple(disease_name)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+#BPMN
+    def get_disease_medical_drug_info(self, disease_name):
+        """组合查询：查询疾病信息、药品价格和医疗费用信息"""
+        #输入
+        disease_info = self.get_some_disease_info([disease_name])
+        if not disease_info:
+            return {"error": "Disease not found"}
+        disease = disease_info[0]
+        #分割
+        treatment_codes = disease['treatment_code'].split(';')
+        drug_codes = disease['recommended_drugs_code'].split(';')
+        medical_costs = self.get_some_medical_costs(treatment_codes)
+        drug_prices = self.get_some_drug_prices(drug_codes)
+        #输出
+        result = {
+            "description": disease['description'],
+            "disease_name": disease['disease_name'],
+            "level": disease['level'],
+            "recommended_drugs": disease['recommended_drugs'],
+            "treatment": disease['treatment'],
+        }
+        for idx, drug in enumerate(drug_prices):
+            result[f"drug_name{idx + 1}"] = drug['drug_name']
+            result[f"drug_price{idx + 1}"] = drug['price']
+            result[f"drug_specification{idx + 1}"] = drug['specification']
+            result[f"drug_manufacturer{idx + 1}"] = drug['manufacturer']
+            
+        for idx, medical in enumerate(medical_costs):
+            result[f"treatment_name{idx + 1}"] = medical['item_name']
+            result[f"treatment_price{idx + 1}"] = medical['price']
+            result[f"treatment_unit{idx + 1}"] = medical['unit']
+
+        return [result]
+
 
     def __del__(self):
         if hasattr(self.local, "conn"):
             self.local.conn.close()
+
